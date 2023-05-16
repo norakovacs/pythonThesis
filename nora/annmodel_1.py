@@ -10,6 +10,7 @@ import torch
 import J2Tensor 
 import TuronCohesiveMat
 from customlayers import softLayer, blockLayer, blockDecLayer, symmLayer
+import sys
 
 class neural_network(nn.Module):
     def __init__(self,n_features,output_length, bulk, cohesive, dev):
@@ -21,9 +22,12 @@ class neural_network(nn.Module):
         self.nIntPts = self.bulkPts + self.cohPts
         self.ls = self.bulkPts*3 + self.cohPts*2
         self.hidden_size = self.ls
+        self.coh_size = self.cohPts*2
+        self.bulk_size = self.bulkPts*3
         self.n_layers = 1        
         self.in_size = n_features
         self.output_length = output_length
+        self.in_bulk = self.in_size + self.coh_size
                 
         print('Input size ', self.in_size)
         print('Material layer size ', self.hidden_size)
@@ -35,8 +39,10 @@ class neural_network(nn.Module):
         # softLayer -> Regular dense layer with sotfplus on weights (customized)
         
 #        self.fc1 = blockLayer(in_features=self.in_size,out_features=self.hidden_size, device = device, bias = False)
-        self.fc1 = nn.Linear(in_features=self.in_size,out_features=self.hidden_size, device = self.device, bias = False)
-        self.fc2 = softLayer(in_features=self.hidden_size,out_features=self.output_length, device = self.device, bias = False)
+        #self.fc1 = nn.Linear(in_features=self.in_size,out_features=self.hidden_size, device = self.device, bias = False)
+        self.fc11 = nn.Linear(in_features=self.in_size,out_features=self.coh_size, device = self.device, bias = False)
+        self.fc12 = nn.Linear(in_features=self.in_bulk,out_features=self.bulk_size, device = self.device, bias = False)
+        self.fc2 = softLayer(in_features=self.bulk_size,out_features=self.output_length, device = self.device, bias = False)
  
     def forward(self,x):
         
@@ -45,8 +51,12 @@ class neural_network(nn.Module):
         batch_size, seq_len, _ = x.size()
         
         output =  x.clone()
+        # print(self.in_bulk)
+        # sys.exit()
+
         out = torch.zeros([batch_size,seq_len, self.output_length]).to(self.device)
-        
+        #mid = torch.zeros([batch_size,seq_len, self.in_bulk]).to(self.device)
+
         # Create material models
         
         childb = J2Tensor.J2Material() 
@@ -72,29 +82,42 @@ class neural_network(nn.Module):
                # Encoder ( dehomogenization )
                
             #   print('Macro strain at time step ', t, ' from curve ', j, ': ', output[j,t,:])
-               outputt = self.fc1(output[j,t,:])
-            #   print('Local strain at time step ', t, ' from curve ', j, ': ', outputt)
+               outputt1 = self.fc11(output[j,t,:])
+               #print('Local strain at time step ', t, ' from curve ', j, ': ', outputt1)
+               #sys.exit()
+
+               # Evaluating cohesive models
+
+               for ip in range ( self.cohPts ):
+                   #initipc = self.bulkPts*3 + ip*2
+                   #endipc = self.bulkPts*3 + (ip+1)*2
+                   outputt1[ip*2:(ip+1)*2] = childc.update(outputt1[ip*2:(ip+1)*2], j*self.cohPts + ip)
+                   childc.commit(j*self.cohPts + ip)
+                   
+               #print(outputt1)
+               #print('tractions: ', output[j,t,:])
+               mid = torch.zeros(self.in_bulk)
+               mid[0:self.in_size] = output[j,t,:]
+               mid[self.in_size:] = outputt1[:]
+               #print('strains and tractions: ', mid)
+              # sys.exit()
                
+               outputt2 = self.fc12(mid)
+               #print('input to j2: ', outputt2)
+
                # Evaluating bulk models
                   
                for ip in range ( self.bulkPts ):
-                   outputt[ip*3:(ip+1)*3] = childb.update(outputt[ip*3:(ip+1)*3], j*self.bulkPts + ip)
+                   outputt2[ip*3:(ip+1)*3] = childb.update(outputt2[ip*3:(ip+1)*3], j*self.bulkPts + ip)
                    childb.commit(j*self.bulkPts + ip)
-
-                # Evaluating cohesive models
-
-               for ip in range ( self.cohPts ):
-                   initipc = self.bulkPts*3 + ip*2
-                   endipc = self.bulkPts*3 + (ip+1)*2
-                   outputt[initipc:endipc] = childc.update(outputt[initipc:endipc], j*self.cohPts + ip)
-                   childc.commit(j*self.cohPts + ip)
     
               # Decoder ( homogenization )
-              # print('Local stress at time step ', t, ' from curve ', j, ': ', outputt)
+               #print('Local stress at time step ', t, ' from curve ', j, ': ', outputt2)
                            
-               outputt = self.fc2(outputt)
-             #  print('Homogenized stress at time step ', t, ' from curve ', j, ': ', outputt)
-               out[j,t, :] = outputt.view(-1,self.output_length)
+               outputt2 = self.fc2(outputt2)
+               #print('Homogenized stress at time step ', t, ' from curve ', j, ': ', outputt2)
+               out[j,t, :] = outputt2.view(-1,self.output_length)
+               #sys.exit()
                
 
         output=out.to(self.device)
