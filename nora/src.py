@@ -19,7 +19,7 @@ import numpy as np
 from numpy import random
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader 
-from annmodel_1 import neural_network
+from annmodel import neural_network
 
 # ----------------------------- GPU related ----------------------------------
 
@@ -125,6 +125,15 @@ class PRNN ( ):
 #              loc.write('ElapsedCPUtime = ' + str(cputime[0][0,0]) + '\n')
               loc.write('TotalNumberofParameters = ' + str(errmatrix[0][0,1]) + '\n')
               loc.write('AbsoluteError = ' + str(errmatrix[0][0,0]) + '\n')
+
+  def writeOutFile(self, cwd, output, cputime=0):
+    if self.preTrained:
+        with open(os.path.join(cwd, 'prnnoffline.out'), 'w') as loc:
+            for i in range(len(output)):
+                line = ' '.join(str(x) for x in output[i, :])
+                loc.write(line[1:-1] + '\n')
+                if (i + 1) % 60 == 0:
+                    loc.write('\n')
       
   def writeErrFile ( self, cwd, errmatrix ):
       if not self.preTrained:
@@ -279,8 +288,10 @@ class PRNN ( ):
                               'available for the specified size of validation set. '
                               'Reducing it to ', n_data-nlctr, ' curves only.')
                         self.skipFirst = n_data-nlctr
-                        
-                    shuffled = random.randint(n_data-self.skipFirst, size =  self.trsize)
+                    rangeofidx = range(0, n_data-self.skipFirst)
+                    #shuffled = np.asarray(random.sample(rangeofidx, self.trsize))
+                    shuffled = np.random.choice(rangeofidx, size=self.trsize, replace=False)
+                    #shuffled = random.randint(n_data-self.skipFirst, size =  self.trsize)
                     samples = shuffled + self.skipFirst
                     valsamples = np.arange(0, self.skipFirst)
                     
@@ -502,6 +513,7 @@ class PRNN ( ):
                     combined = np.column_stack ( ( trstrain, trsig ) )
                     combinedbnn = np.column_stack ((trstrain, test_pred_array.reshape([y_train.shape[0]*y_train.shape[1], 3])))
 
+                #print(combinedbnn)
                 # Detail number, name and value of optimal parameters
  
                 print ('\nOptimal parameters')
@@ -523,6 +535,11 @@ class PRNN ( ):
                 cwd = os.getcwd() 
                 self.writeLogFile(cwd, errmatrix)
                 self.writeErrFile(cwd, errmatrix)
+
+                roundTo = 8
+                testa = np.round(test_pred_array,roundTo)
+                outdata = np.column_stack ((trstrain, testa.reshape([y_train.shape[0]*y_train.shape[1], 3])))
+                self.writeOutFile(cwd, outdata)
                 
            #     print("========FINAL ========= Model's state_dict:")
            #     for name, param_tensor in model.state_dict().items():
