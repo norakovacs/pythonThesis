@@ -19,7 +19,7 @@ import numpy as np
 from numpy import random
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader 
-from annmodel import neural_network
+from annmodel_2 import neural_network
 
 # ----------------------------- GPU related ----------------------------------
 

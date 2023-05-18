@@ -1,10 +1,10 @@
-bulkPoints = 2
-cohPoints = 3
-maxIteration = 2
-writeEvery = 1
+bulkPoints = 1
+cohPoints = 1
+maxIteration = 20000
+writeEvery = 1000
 earlyStop = 1000
-trSize = 2
-skipFirst = 2
+trSize = 18
+skipFirst = 54
 seed = 0
-batchSize = 1
+batchSize = 9
 loadType = loadnonprop

@@ -41,12 +41,12 @@ parameters[7] = random.uniform(0, 100000)
 
 # File with training, validation and/or test sets
 
-dataset = ['test_mod_gp_060.data']
+dataset = ['trainval_mod_gp_060.data']
 
 # Create NN 
  
 src.PRNN(dataset, parameters, loadtype, 
-         normalize = False, saveError = True, pretrained = True, 
+         normalize = False, saveError = True, pretrained = False, 
                warmStart = False, evalncurves = 1)
 
 

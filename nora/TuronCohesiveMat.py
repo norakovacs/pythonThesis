@@ -134,7 +134,7 @@ class TuronCohesiveMat:
         # print('Gradient w.r.t. to jump is ', jump.grad)
         # sys.exit()
 
-        return traction
+        return traction, loading
 
     def elasticUpdate(self, traction, stiff, jump):
         for i in range(self.rank_):
