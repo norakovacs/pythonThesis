@@ -68,6 +68,7 @@ class TuronCohesiveMat:
 
     def update(self, jump, ip):
         jump_new = jump.clone()
+        jumpt = jump.clone()
 
         if jump_new[0] < 0:
             jump_new[0] = 0.0
@@ -115,14 +116,14 @@ class TuronCohesiveMat:
         #calculating secant stiffness and traction
         stiff = torch.zeros((2, 2), dtype=torch.float64)
         
-        if jump_new[0] < 0:
+        if jumpt[0] < 0:
             stiff[0, 0] = self.dummy_
         else:
             stiff[0, 0] = (1.0 - damage) * self.dummy_
 
         for i in range(1, self.rank_):
             stiff[i, i] = (1.0 - damage) * self.dummy_
-        traction = torch.matmul(stiff, jump_new)
+        traction = torch.matmul(stiff, jumpt)
 
         #print('stiffness matrix from update function: ', stiff)
 

@@ -86,11 +86,11 @@ class neural_network(nn.Module):
                for ip in range ( self.cohPts ):
                    initipc = self.bulkPts*3 + ip*2
                    endipc = self.bulkPts*3 + (ip+1)*2
-                   outputt[initipc:endipc] = childc.update(outputt[initipc:endipc], j*self.cohPts + ip)
+                   outputt[initipc:endipc], loc = childc.update(outputt[initipc:endipc], j*self.cohPts + initipc)
                    childc.commit(j*self.cohPts + ip)
     
               # Decoder ( homogenization )
-              # print('Local stress at time step ', t, ' from curve ', j, ': ', outputt)
+               print('Local stress at time step ', t, ' from curve ', j, ': ', outputt)
                            
                outputt = self.fc2(outputt)
              #  print('Homogenized stress at time step ', t, ' from curve ', j, ': ', outputt)
