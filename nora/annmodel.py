@@ -86,7 +86,7 @@ class neural_network(nn.Module):
                for ip in range ( self.cohPts ):
                    initipc = self.bulkPts*3 + ip*2
                    endipc = self.bulkPts*3 + (ip+1)*2
-                   outputt[initipc:endipc], loc = childc.update(outputt[initipc:endipc], j*self.cohPts + initipc)
+                   outputt[initipc:endipc], loc = childc.update(outputt[initipc:endipc], j*self.cohPts + ip)
                    childc.commit(j*self.cohPts + ip)
     
               # Decoder ( homogenization )

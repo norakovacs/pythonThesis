@@ -11,7 +11,30 @@ import J2Tensor
 import TuronCohesiveMat
 from customlayers import softLayer, blockLayer, blockDecLayer, symmLayer
 import sys
+import time
 
+class TimerError(Exception):
+    """A custom exception used to report errors in use of Timer class"""
+
+class Timer:
+    def __init__(self):
+        self._start_time = None
+
+    def start(self):
+        """Start a new timer"""
+        if self._start_time is not None:
+            raise TimerError("Timer is running. Use .stop() to stop it")
+        self._start_time = time.perf_counter()
+
+    def stop(self):
+        """Stop the timer, and report the elapsed time"""
+        if self._start_time is None:
+            raise TimerError("Timer is not running. Use .start() to start it")
+
+        elapsed_time = time.perf_counter() - self._start_time
+        self._start_time = None
+        return elapsed_time
+    
 class neural_network(nn.Module):
     def __init__(self,n_features,output_length, bulk, cohesive, dev):
         super(neural_network,self).__init__()
@@ -28,6 +51,7 @@ class neural_network(nn.Module):
         self.in_size = n_features
         self.output_length = output_length
         self.in_bulk = self.in_size + self.coh_size
+        self.timer = Timer()
                 
         print('Input size ', self.in_size)
         print('Material layer size ', self.hidden_size)
@@ -41,13 +65,15 @@ class neural_network(nn.Module):
 #        self.fc1 = blockLayer(in_features=self.in_size,out_features=self.hidden_size, device = device, bias = False)
         #self.fc1 = nn.Linear(in_features=self.in_size,out_features=self.hidden_size, device = self.device, bias = False)
         self.fc11 = nn.Linear(in_features=self.in_size,out_features=self.coh_size, device = self.device, bias = False)
+        #print(self.fc11.weight)
+        #self.fc11.weight = self.fc11.weight*0.1
+        #print(self.fc11.weight)
         self.fc12 = nn.Linear(in_features=self.in_bulk,out_features=self.bulk_size, device = self.device, bias = False)
         self.fc2 = softLayer(in_features=self.bulk_size,out_features=self.output_length, device = self.device, bias = False)
  
     def forward(self,x):
-        
+        self.timer.start()
         # Equivalent to propagate 
-        
         batch_size, seq_len, _ = x.size()
         
         output =  x.clone()
@@ -82,7 +108,7 @@ class neural_network(nn.Module):
                # Encoder ( dehomogenization )
                
             #   print('Macro strain at time step ', t, ' from curve ', j, ': ', output[j,t,:])
-               outputt1 = self.fc11(output[j,t,:])
+               outputt1 = self.fc11(output[j,t,:])*0.01
                #print('Local strain at time step ', t, ' from curve ', j, ': ', outputt1)
                #sys.exit()
 
@@ -91,7 +117,7 @@ class neural_network(nn.Module):
                for ip in range ( self.cohPts ):
                    #initipc = self.bulkPts*3 + ip*2
                    #endipc = self.bulkPts*3 + (ip+1)*2
-                   outputt1[ip*2:(ip+1)*2],load = childc.update(outputt1[ip*2:(ip+1)*2], j*self.cohPts + ip)
+                   outputt1[ip*2:(ip+1)*2], load = childc.update(outputt1[ip*2:(ip+1)*2], j*self.cohPts + ip)
                    childc.commit(j*self.cohPts + ip)
                    
                #print(outputt1)
@@ -121,4 +147,6 @@ class neural_network(nn.Module):
                
 
         output=out.to(self.device)
+        print("forward pass done\n")
+        print(self.timer.stop())
         return output

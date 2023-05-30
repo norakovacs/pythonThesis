@@ -47,7 +47,7 @@ dataset = ['trainval_mod_gp18_060.data']
  
 src.PRNN(dataset, parameters, loadtype, 
          normalize = False, saveError = True, pretrained = False, 
-               warmStart = True, evalncurves = 54)
+               warmStart = False, evalncurves = 54)
 
 
 # --------------------------- Extra comments ---------------------------------
