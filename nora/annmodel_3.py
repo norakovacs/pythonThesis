@@ -11,9 +11,10 @@ import J2Tensor
 import TuronCohesiveMat
 from customlayers import softLayer, blockLayer, blockDecLayer, symmLayer
 import sys
+import numpy as np
 
-# Architecture no.1
-# Traction input to J2
+# Architecture no.3
+# Damage input to J2, linear activation function on strain-displacement jump relation
 
 class neural_network(nn.Module):
     def __init__(self,n_features,output_length, bulk, cohesive, dev):
@@ -30,7 +31,7 @@ class neural_network(nn.Module):
         self.n_layers = 1        
         self.in_size = n_features
         self.output_length = output_length
-        self.in_bulk = self.in_size + self.coh_size
+        self.in_bulk = self.in_size + self.cohPts
                 
         print('Input size ', self.in_size)
         print('Material layer size ', self.hidden_size)
@@ -46,7 +47,7 @@ class neural_network(nn.Module):
         self.fc11 = nn.Linear(in_features=self.in_size,out_features=self.coh_size, device = self.device, bias = False)
         self.fc12 = nn.Linear(in_features=self.in_bulk,out_features=self.bulk_size, device = self.device, bias = False)
         self.fc2 = softLayer(in_features=self.bulk_size,out_features=self.output_length, device = self.device, bias = False)
- 
+        
     def forward(self,x):
         
         # Equivalent to propagate 
@@ -83,30 +84,30 @@ class neural_network(nn.Module):
             for t in range(seq_len):
                 
                # Encoder ( dehomogenization )
-               
             #   print('Macro strain at time step ', t, ' from curve ', j, ': ', output[j,t,:])
                outputt1 = self.fc11(output[j,t,:])
                #print('Local strain at time step ', t, ' from curve ', j, ': ', outputt1)
                #sys.exit()
 
                # Evaluating cohesive models
+               dam = torch.zeros((seq_len, self.cohPts))
 
                for ip in range ( self.cohPts ):
                    #initipc = self.bulkPts*3 + ip*2
                    #endipc = self.bulkPts*3 + (ip+1)*2
-                   outputt1[ip*2:(ip+1)*2],load = childc.update(outputt1[ip*2:(ip+1)*2], j*self.cohPts + ip)
+                   outputt1[ip*2:(ip+1)*2], loading = childc.update(outputt1[ip*2:(ip+1)*2], j*self.cohPts + ip)
+                #    print(childc.preHist_[ip].damage)
+                #    print(childc.newHist_[ip].damage)
                    childc.commit(j*self.cohPts + ip)
+                   d = childc.getHistory(ip)
+                   dam[t,ip] = d
                    
-               #print(outputt1)
-               #print('tractions: ', output[j,t,:])
+               #print(dam)
+
                mid = torch.zeros(self.in_bulk)
                mid[0:self.in_size] = output[j,t,:]
-               mid[self.in_size:] = outputt1[:]
-               #print('strains and tractions: ', mid)
-              # sys.exit()
-               
+               mid[self.in_size:] = dam[t,:]
                outputt2 = self.fc12(mid)
-               #print('input to j2: ', outputt2)
 
                # Evaluating bulk models
                   

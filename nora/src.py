@@ -19,7 +19,7 @@ import numpy as np
 from numpy import random
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader 
-from annmodel_2 import neural_network
+from annmodel_4 import neural_network
 
 # ----------------------------- GPU related ----------------------------------
 
@@ -117,7 +117,7 @@ class PRNN ( ):
   def writeLogFile ( self, cwd, errmatrix, cputime = 0):
       if not self.preTrained:
           with open(os.path.join(cwd,'prnn.log'), 'a') as loc:
-     #         loc.write('\nElapsedCPUtime = ' + str(cputime[0][0,0]) + '\n')
+              loc.write('\nElapsedCPUtime = ' + str(cputime[0][0,0]) + '\n')
               loc.write('TotalNumberofParameters = ' + str(errmatrix[0][0,1]) + '\n')
               loc.write('AbsoluteError = ' + str(errmatrix[0][0,0]) + '\n')
       else:    

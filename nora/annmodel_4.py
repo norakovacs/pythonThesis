@@ -9,11 +9,13 @@ from torch import nn
 import torch
 import J2Tensor 
 import TuronCohesiveMat
-from customlayers import softLayer, blockLayer, blockDecLayer, symmLayer
+from customlayers import softLayer, blockLayer, blockDecLayer, symmLayer, shiftedSoftplus
 import sys
+import numpy as np
+import time
 
-# Architecture no.1
-# Traction input to J2
+# Architecture no.4
+# Damage input to J2, shifted softplus activation function on strain-displacement jump relation
 
 class neural_network(nn.Module):
     def __init__(self,n_features,output_length, bulk, cohesive, dev):
@@ -30,7 +32,7 @@ class neural_network(nn.Module):
         self.n_layers = 1        
         self.in_size = n_features
         self.output_length = output_length
-        self.in_bulk = self.in_size + self.coh_size
+        self.in_bulk = self.in_size + self.cohPts
                 
         print('Input size ', self.in_size)
         print('Material layer size ', self.hidden_size)
@@ -43,12 +45,11 @@ class neural_network(nn.Module):
         
 #        self.fc1 = blockLayer(in_features=self.in_size,out_features=self.hidden_size, device = device, bias = False)
         #self.fc1 = nn.Linear(in_features=self.in_size,out_features=self.hidden_size, device = self.device, bias = False)
-        self.fc11 = nn.Linear(in_features=self.in_size,out_features=self.coh_size, device = self.device, bias = False)
+        self.fc11 = shiftedSoftplus(in_features=self.in_size,out_features=self.coh_size, device = self.device, bias = False)
         self.fc12 = nn.Linear(in_features=self.in_bulk,out_features=self.bulk_size, device = self.device, bias = False)
         self.fc2 = softLayer(in_features=self.bulk_size,out_features=self.output_length, device = self.device, bias = False)
- 
-    def forward(self,x):
         
+    def forward(self,x):
         # Equivalent to propagate 
         
         batch_size, seq_len, _ = x.size()
@@ -81,37 +82,40 @@ class neural_network(nn.Module):
 
         for j in range ( batch_size ):            
             for t in range(seq_len):
-                
                # Encoder ( dehomogenization )
-               
             #   print('Macro strain at time step ', t, ' from curve ', j, ': ', output[j,t,:])
                outputt1 = self.fc11(output[j,t,:])
                #print('Local strain at time step ', t, ' from curve ', j, ': ', outputt1)
                #sys.exit()
 
                # Evaluating cohesive models
+               dam = torch.zeros((seq_len, self.cohPts))
 
                for ip in range ( self.cohPts ):
                    #initipc = self.bulkPts*3 + ip*2
                    #endipc = self.bulkPts*3 + (ip+1)*2
-                   outputt1[ip*2:(ip+1)*2],load = childc.update(outputt1[ip*2:(ip+1)*2], j*self.cohPts + ip)
+                #    self.timer.start()
+                   outputt1[ip*2:(ip+1)*2], loading = childc.update(outputt1[ip*2:(ip+1)*2], j*self.cohPts + ip)
+                #    print("update function in Turon model done in ", self.timer.stop(), ' seconds')
+                #    print(childc.preHist_[ip].damage)
+                #    print(childc.newHist_[ip].damage)
                    childc.commit(j*self.cohPts + ip)
+                   d = childc.getHistory(ip)
+                   dam[t,ip] = d
                    
-               #print(outputt1)
-               #print('tractions: ', output[j,t,:])
+               #print(dam)
+
                mid = torch.zeros(self.in_bulk)
                mid[0:self.in_size] = output[j,t,:]
-               mid[self.in_size:] = outputt1[:]
-               #print('strains and tractions: ', mid)
-              # sys.exit()
-               
+               mid[self.in_size:] = dam[t,:]
                outputt2 = self.fc12(mid)
-               #print('input to j2: ', outputt2)
 
                # Evaluating bulk models
                   
                for ip in range ( self.bulkPts ):
+                #    self.timer.start()
                    outputt2[ip*3:(ip+1)*3] = childb.update(outputt2[ip*3:(ip+1)*3], j*self.bulkPts + ip)
+                #    print("update function in J2 model done in ", self.timer.stop(), ' seconds')
                    childb.commit(j*self.bulkPts + ip)
     
               # Decoder ( homogenization )

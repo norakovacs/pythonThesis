@@ -13,6 +13,9 @@ from customlayers import softLayer, blockLayer, blockDecLayer, symmLayer
 import sys
 import numpy as np
 
+# Architecture no.2
+# Damage is introduced to micro stress if loading == 0
+
 class neural_network(nn.Module):
     def __init__(self,n_features,output_length, bulk, cohesive, dev):
         super(neural_network,self).__init__()
