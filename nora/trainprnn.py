@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Thu Mar 17 18:17:41 2022
@@ -32,7 +32,7 @@ def readTrData (infilename ):
 
 # Reading file with information on the network and setting random seed 
 
-parameters, loadtype = readTrData ('trData.txt')
+parameters, loadtype = readTrData ('tData.txt')
 rseed = int(parameters[7])
 random.seed ( rseed )
 parameters[7] = random.uniform(0, 100000) 
@@ -41,7 +41,7 @@ parameters[7] = random.uniform(0, 100000)
 
 # File with training, validation and/or test sets
 
-dataset = ['trainval_mod_gp18_060.data']
+dataset = ['twonm1_061.data']
 
 # Create NN 
  

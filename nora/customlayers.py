@@ -45,6 +45,8 @@ class softLayer(nn.Module):
             nn.init.uniform_(self.bias, -bound, bound)
 
     def forward(self, input: Tensor) -> Tensor:
+    #   print('input for last layer: ', input)
+    #   print('weight in last layer: ', self.weight)
       return nn.functional.linear(input, self.sp(self.weight), self.bias) 
   
 class shiftedSoftplus(nn.Module): 
@@ -82,7 +84,197 @@ class shiftedSoftplus(nn.Module):
 
     def forward(self, input: Tensor) -> Tensor:
       return nn.functional.softplus(nn.functional.linear(input, self.weight, self.bias) -5.0) 
-  
+    
+class softplusb(nn.Module): 
+    from torch import Tensor
+    
+    # This layer applies a softplus function with bias to convert macroscopic
+    # strains to displacement jumps.
+    
+    def __init__(self, in_features: int, out_features: int, bias: bool = True,
+                 device=None, dtype=None) -> None:
+        factory_kwargs = {'device': device, 'dtype': dtype}
+        super(softplusb, self).__init__()
+    
+        self.in_features = in_features
+        self.out_features = out_features
+        self.weight = nn.Parameter(torch.empty((out_features, in_features), **factory_kwargs))
+        if bias:
+            self.bias = nn.Parameter(torch.empty(out_features, **factory_kwargs))
+        else:
+            self.register_parameter('bias', None)
+        self.reset_parameters()
+
+
+    def reset_parameters(self) -> None:
+        # Setting a=sqrt(5) in kaiming_uniform is the same as initializing with
+        # uniform(-1/sqrt(in_features), 1/sqrt(in_features)). For details, see
+        # https://github.com/pytorch/pytorch/issues/57109
+        import math 
+    
+        bound = 0.01
+        nn.init.uniform_(self.weight, -bound, bound)
+        if self.bias is not None:
+            fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.weight)
+            bound = 0 #1 / math.sqrt(fan_in) if fan_in > 0 else 0
+            nn.init.uniform_(self.bias, -bound, bound)
+            #print(self.bias)
+
+    def forward(self, input: Tensor) -> Tensor:
+      #print(self.bias)
+      return nn.functional.softplus(nn.functional.linear(input, self.weight, self.bias)) 
+
+class leakyrel(nn.Module): 
+    from torch import Tensor
+    
+    # This layer applies a leaky relu function with bias to convert macroscopic
+    # strains to displacement jumps.
+    
+    def __init__(self, in_features: int, out_features: int, bias: bool = True,
+                 device=None, dtype=None) -> None:
+        factory_kwargs = {'device': device, 'dtype': dtype}
+        super(leakyrel, self).__init__()
+    
+        self.in_features = in_features
+        self.out_features = out_features
+        self.weight = nn.Parameter(torch.empty((out_features, in_features), **factory_kwargs))
+        if bias:
+            self.bias = nn.Parameter(torch.empty(out_features, **factory_kwargs))
+        else:
+            self.register_parameter('bias', None)
+        self.reset_parameters()
+
+
+    def reset_parameters(self) -> None:
+        # Setting a=sqrt(5) in kaiming_uniform is the same as initializing with
+        # uniform(-1/sqrt(in_features), 1/sqrt(in_features)). For details, see
+        # https://github.com/pytorch/pytorch/issues/57109
+        import math 
+    
+        bound = 0.01
+        nn.init.uniform_(self.weight, -bound, bound)
+        if self.bias is not None:
+            fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.weight)
+            bound = 0 #1 / math.sqrt(fan_in) if fan_in > 0 else 0
+            nn.init.uniform_(self.bias, -bound, bound)
+            #print(self.bias)
+
+    def forward(self, input: Tensor) -> Tensor:
+      print(self.bias)
+      return nn.functional.leaky_relu(nn.functional.linear(input, self.weight, self.bias)) 
+
+class tanh(nn.Module): 
+    from torch import Tensor
+    
+    # This layer applies a tanh function in the hidden layer.
+    
+    def __init__(self, in_features: int, out_features: int, bias: bool = True,
+                 device=None, dtype=None) -> None:
+        factory_kwargs = {'device': device, 'dtype': dtype}
+        super(tanh, self).__init__()
+    
+        self.in_features = in_features
+        self.out_features = out_features
+        self.weight = nn.Parameter(torch.empty((out_features, in_features), **factory_kwargs))
+        if bias:
+            self.bias = nn.Parameter(torch.empty(out_features, **factory_kwargs))
+        else:
+            self.register_parameter('bias', None)
+        self.reset_parameters()
+
+
+    def reset_parameters(self) -> None:
+        # Setting a=sqrt(5) in kaiming_uniform is the same as initializing with
+        # uniform(-1/sqrt(in_features), 1/sqrt(in_features)). For details, see
+        # https://github.com/pytorch/pytorch/issues/57109
+        import math 
+    
+        #nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+        nn.init.uniform_(self.weight, -0.0005, 0.0005)
+        if self.bias is not None:
+            fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.weight)
+            bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
+            nn.init.uniform_(self.bias, -bound, bound)
+
+    def forward(self, input: Tensor) -> Tensor:
+      return nn.functional.tanh(nn.functional.linear(input, self.weight, self.bias)) 
+
+class leakyr(nn.Module): 
+    from torch import Tensor
+    
+    # This layer applies a leaky reku function with bias to convert macroscopic
+    # strains to displacement jumps.
+    
+    def __init__(self, in_features: int, out_features: int, bias: bool = True,
+                 device=None, dtype=None) -> None:
+        factory_kwargs = {'device': device, 'dtype': dtype}
+        super(leakyr, self).__init__()
+    
+        self.in_features = in_features
+        self.out_features = out_features
+        self.sp = nn.Softplus()
+        self.weight = nn.Parameter(torch.empty((out_features, in_features), **factory_kwargs))
+        self.weightleaky = nn.Parameter(torch.empty(out_features, **factory_kwargs))
+        self.biasw = torch.zeros(out_features, **factory_kwargs)
+        if bias:
+            self.bias = nn.Parameter(torch.empty(out_features, **factory_kwargs))
+        else:
+            self.register_parameter('bias', None)
+        self.reset_parameters()
+
+
+    def reset_parameters(self) -> None:
+        import math 
+    
+        #bound = 0.01
+        #nn.init.uniform_(self.weight, -bound, bound)
+        nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+        
+        # fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.weight)
+        # bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
+        nn.init.uniform_(self.weightleaky, -9., -8.)
+
+        if self.bias is not None:
+            bound = 0.01 #1 / math.sqrt(fan_in) if fan_in > 0 else 0
+            nn.init.uniform_(self.bias, math.log(math.exp(0.001)-1.), math.log(math.exp(0.1)-1.))
+            #print(self.bias)
+    
+    def leaky_mod(self, x,bias, w) -> Tensor:
+        xr = x.clone()
+        print('bias: ',bias)
+        if x[0] >= bias[0]:
+            xr[0] = w[0] * (x[0] - bias[0])
+        else:
+            xr[0] = 0.01 * w[0] * (x[0] - bias[0])
+        for i in range(1,x.size(0)):
+            if x[i] >= 0.:
+                xr[i] = w[i] * (x[i])
+            else:
+                xr[i] = 1e-5 * w[i] * (x[i])
+            #xr[i] = res
+        #print(xr)
+        return xr#.clone().requires_grad_(True)
+
+    def forward(self, input: Tensor) -> Tensor:
+      x = nn.functional.linear(input, self.weight, self.biasw)
+      #print('x: ',x)
+    #   print('weight: ',self.weight)
+    #   print('weightl: ',self.weightleaky)
+    #   print(nn.Softplus(self.bias))
+      return self.leaky_mod(x,self.sp(self.bias),self.sp(self.weightleaky)) 
+
+class mid(nn.Module): 
+    from torch import Tensor
+    
+    def __init__(self,
+                 device=None, dtype=None) -> None:
+        
+        super(mid, self).__init__()
+    
+
+    def forward(self, inputone: Tensor, inputtwo:Tensor) -> Tensor:
+      return torch.cat((inputone,inputtwo))
+
 class blockLayer(nn.Module): 
     from torch import Tensor
     

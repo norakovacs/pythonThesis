@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Thu Mar 17 18:25:38 2022
@@ -19,7 +19,7 @@ import numpy as np
 from numpy import random
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader 
-from annmodel_4 import neural_network
+from annmodel_6mod import neural_network
 
 # ----------------------------- GPU related ----------------------------------
 
@@ -117,7 +117,7 @@ class PRNN ( ):
   def writeLogFile ( self, cwd, errmatrix, cputime = 0):
       if not self.preTrained:
           with open(os.path.join(cwd,'prnn.log'), 'a') as loc:
-              loc.write('\nElapsedCPUtime = ' + str(cputime[0][0,0]) + '\n')
+              #loc.write('\nElapsedCPUtime = ' + str(cputime[0][0,0]) + '\n')
               loc.write('TotalNumberofParameters = ' + str(errmatrix[0][0,1]) + '\n')
               loc.write('AbsoluteError = ' + str(errmatrix[0][0,0]) + '\n')
       else:    
@@ -131,7 +131,7 @@ class PRNN ( ):
         with open(os.path.join(cwd, 'prnnoffline.out'), 'w') as loc:
             for i in range(len(output)):
                 line = ' '.join(str(x) for x in output[i, :])
-                loc.write(line[1:-1] + '\n')
+                loc.write(line[0:-1] + '\n')
                 if (i + 1) % 60 == 0:
                     loc.write('\n')
       
@@ -412,10 +412,17 @@ class PRNN ( ):
                 for i in range(epochs):
                   running_loss = 0
                   for j, data in enumerate(train_loader):
+                      with open (os.path.join(cwd, 'damage.log'), 'a' ) as l:
+                          l.write('Epoch ' + str(i)+'\n')
+                          l.close()
                       y_pred = modeltr( data[:][0] )
                       loss = criterion(y_pred, data[:][1])
                       optimizer.zero_grad()  # Clears existing gradients
                       loss.backward()
+                      print('gradients are', modeltr.fc11.weight.grad)
+                      with open (os.path.join(cwd, 'damage.log'), 'a' ) as l:
+                          l.write('gradients fc11 ' + str(modeltr.fc11.weight.grad)+'\n')
+                          l.close()
                       optimizer.step()
                       running_loss += loss.item()
 
@@ -446,6 +453,16 @@ class PRNN ( ):
                           
                      # Only update file with best parameters if validation loss
                      # is smaller than the historical best so far
+                      mid_model_state = copy.deepcopy(modeltr.state_dict())
+                      prnnintmed = os.path.join (cwd, 'prnn' + str(self.loadtype) + '_' + str(self.rseed) + '_' + str(ls) + '_' + str(ncurves) + '_epoch' + str(i) + '.pth')
+                      prnnintmedb = os.path.join (cwd, 'prnn' + str(self.loadtype) + '_' + str(self.rseed) + '_' + str(ls) + '_' + str(ncurves) + '_epoch' + str(i-20) + '.pth')
+                      torch.save(mid_model_state, prnnintmed)
+                      os.system('rm ' + str(prnnintmedb))
+                      print('Saved model in ', prnnintmed)
+                      with open (os.path.join(cwd, 'rnnint.log'), 'a' ) as lo:
+                          lo.write('Epoch ' + str(i) + ' (training) loss = ' + str(running_loss))
+                          lo.write('\nEpoch ' + str(i) + ' (validation) loss = ' + str(running_loss_val))
+                          lo.close()
                               
                       if ( running_loss_val <= prev ):
                           prev = running_loss_val
